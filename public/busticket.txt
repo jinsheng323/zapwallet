@@ -1,0 +1,320 @@
+<template>
+<div>
+    <i  class="icon fa fa-subway inner-icon" aria-hidden="true" ></i>
+    <div id="tab2" class="tab-grid" >
+        <h3>Search for Bus Tickets</h3>
+        <div class="book-a-ticket">
+            <div class=" bann-info">
+                <form action="bus-list.html" method="post" class="signup">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="ban-top">
+                                <div class="bnr-left">
+                                    <label class="inputLabel">From:</label>
+                                    <v-select v-if="isLoaded"  :options="citys.data" label="City" v-model="cityFrom"></v-select>
+                                    <label for="" class="error" v-if="form.errors.cityFrom">{{form.errors.cityFrom}}</label>
+                                </div>
+
+                                <div class="bnr-left">
+                                    <label class="inputLabel">To:</label>
+                                    <v-select v-if="isLoaded"  :options="citys.data" label="City" v-model="cityTo"></v-select>
+                                    <label for="" class="error" v-if="form.errors.cityTo">{{form.errors.cityTo}}</label>
+                                </div>
+                                <div class="clearfix"></div>
+                            </div>
+                            
+                            
+                        </div>
+                        <div class="col-md-6">
+                            <div class="ban-bottom">
+                                <div class="bnr-right">
+                                    <label class="inputLabel">Date of Journey:</label>
+                                    <datepicker
+                                        v-model="form.journeyDate"
+                                        placeholder="Select Date"
+                                        input-class="form-control"
+                                        :format="'yyyy-MM-dd'"
+                                        :disabled-dates="disable_date"
+                                    ></datepicker>
+                                    <label for="" class="error" v-if="form.errors.journeyDate">{{form.errors.journeyDate}}</label>
+                                </div>
+                                <div class="bnr-right">
+                                    <label class="inputLabel">Date of Return<span class="opt">&nbsp;(Optional):</span></label>
+                                    <datepicker
+                                        v-model="form.returnDate"
+                                        placeholder="Select Date"
+                                        input-class="form-control"
+                                        :format="'yyyy-MM-dd'"
+                                        :disabled-dates="disable_date"
+                                    ></datepicker>
+                                </div>
+                                <div class="clearfix"></div>
+                                
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="search">
+                                <input type="submit" class="submit" @click.prevent="submit" :disabled="form.busy" value="Search Bus">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+<div class="bus-loading" v-if="form.busy">
+   <half-circle-spinner
+    :animation-duration="1000"
+    :size="60"
+    color="#ff1d5e"
+    />
+</div>
+<div class="result-area" v-if="showResult">
+    <section class="clearfix sort-bar">
+        <div>
+            <div class="sort-blk">
+                <div class="sort-srch">Operator</div>
+            </div>
+        </div>
+        <div>
+            <div>
+                <div class="sort-blk">
+                    <div class="sort-srch">Departure</div>
+                </div>
+            </div>
+            <div>
+                <div class="sort-blk">
+                    <div class="sort-srch">Duration</div>
+                </div>
+            </div>
+            <div>
+                <div class="sort-blk">
+                    <div class="sort-srch">Arrival</div>
+                </div>
+            </div>
+        </div>
+        <div>
+            <div class="sort-blk">
+                <div class="sort-srch">Starting price</div>
+                <div class="inc-txt">Inclusive of service charge</div>
+                <div class="inc-txt small">Inc</div>
+            </div>
+        </div>
+    </section>
+    <section class=" clearfix listing">
+        <div class="srch-card" v-for="(item, index) of busResults.Buses" :key="index">
+            <div class="srch-top clearfix">
+                <div class="label-blk">
+                    <div class="dark-txt" :title="item.CompanyName">{{item.CompanyName}} </div>
+                </div>
+                <div class="time-pick-blk">
+                    <div class="pick-blk dark-txt">{{getDeptTime(item.DeptTime)}}</div>
+                    <div class="dur-blk dur"><span class="dur-ln"></span><span class="dur-txt">{{item.Duration}}hrs</span></div>
+                    <div class="drop-blk dark-txt">03:45, 22 Jan</div>
+                </div>
+                <div class="fare-st-blk">
+                    <div class="dark-txt">₹{{item.BusStatus.BaseFares[0]}} </div>
+                </div>
+            </div>
+            <div class="srch-bottom clearfix">
+                <div class="label-blk" :title="item.DisplayBusType">
+                <div>{{item.DisplayBusType}}</div>
+                <div>
+                    <img src="/images/bus/m-ticket.b045ce45.svg" alt="MTicket" title="MTicket" v-if="item.MTicket">
+                    <img src="/images/bus/Snacks.svg" alt="Snacks" title="Snacks">
+                    <img src="/images/bus/Blanket.svg" alt="Blanket" title="Blanket">
+                    <img src="/images/bus/Charging_Point.svg" alt="Charging_Point" title="Charging_Point">
+                </div>
+            </div>
+            <div class="time-pick-blk">
+                <div class="pick-blk" v-if="item.Pickups.length > 0">
+                    <div :title="item.Pickups[0].PickupName">{{item.Pickups[0].PickupName}}</div>
+                    <div @click="detailBus(item, tabs.pickup)">{{item.Pickups.length}}+ Pickups<div class="arr-down"><span></span></div>
+                    </div>
+                </div>
+                <div class="dur-blk"></div>
+                <div class="drop-blk" v-if="item.Dropoffs.length > 0">
+                    <div :title="item.Dropoffs[0].DropoffName">{{item.Dropoffs[0].DropoffName}}</div>
+                    <div @click="detailBus(item, tabs.dropoff)">{{item.Dropoffs.length}}+ Drop-off <div class="arr-down"><span></span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="fare-st-blk">
+                <div class="st-offr-blk"> {{item.BusStatus.Availability}} seats</div>
+                <div class="ty-btn orange" id="view_chart">Select Seat</div>
+            </div>
+        </div>
+    </div>
+
+</section>
+</div>
+<v-dialog/>
+</div>
+</template>
+
+<script>
+import mantisApi from '../../apis/mantis'
+import vSelect from 'vue-select'
+import Datepicker from 'vuejs-datepicker'
+import moment from 'moment'
+import {MODAL_NAME} from '../../consts/modal'
+import { mapState, mapActions, mapGetters } from 'vuex'
+import {BUS_TABS} from '../../consts/service'
+import { HalfCircleSpinner } from 'epic-spinners'
+
+export default {
+
+    components: {
+        'v-select': vSelect,
+        Datepicker,
+        HalfCircleSpinner
+    },
+
+    created() {
+        let _self = this
+        mantisApi.auth(_ => {
+            mantisApi.cityList(data => {
+                if(data.success) {
+                   _self.citys = data 
+                   _self.isLoaded = true
+                }
+            })
+        })
+    },
+
+    data() {
+        return {
+            form: {
+                fromCityId: 0,
+                toCityId: 0,
+                journeyDate: null,
+                returnDate: null,
+                errors: {},
+                busy: false
+            },
+            citys: {
+                data: [
+                    {
+                        City: "",
+                        CityId: 0,
+                        State: "",
+                    }
+                ]
+            },
+            cityFrom: {},
+            cityTo: {},
+            isLoaded: false,
+            disable_date: {
+                to: new Date(Date.now() - 86400)
+            },
+            showResult: false,
+            busResults: {}
+        }
+    },
+
+    computed: {
+        tabs: () => BUS_TABS
+    },
+
+    methods: {
+        ...mapActions('BusTicket', [
+            'setChartResponse',
+            'setTabActive', 'changeLoading'
+        ]), 
+
+        getDeptTime(time) {
+            if(moment(time).isValid()) {
+                return moment(time).format('hh:mm')
+            }
+            return ""
+        },
+
+        validate() {
+            var errors = {}
+            var isError = false 
+            
+            if(this.cityFrom.CityId == undefined) {
+                errors.cityFrom = 'Please enter from city'
+                isError = true
+            }
+            if(this.cityTo.CityId == undefined) {
+                errors.cityTo = 'Please enter to city'
+                isError = true
+            }
+            if(!this.form.journeyDate) {
+                errors.journeyDate = 'Please select date'
+                isError = true
+            }
+
+            this.form.errors = errors
+            return !isError
+        },
+
+        submit() {
+            // this.$modal.show(MODAL_NAME.bus_modal)
+            // return false
+            this.form.errors = {}
+            if(!this.validate()) return false
+            this.form.busy = true
+            var params = {
+                params: {
+                    fromCityId: this.cityFrom.CityId,
+                    toCityId: this.cityTo.CityId,
+                    journeyDate: this.form.journeyDate,
+                }
+            }
+            let _self = this
+            mantisApi.search(params, data => {
+                _self.showResult = true
+                _self.form.busy = false
+                _self.busResults = data.data
+            }, err => {
+                _self.form.busy = false
+            })
+        },
+
+        detailBus(item, tab_active) {
+            this.setTabActive(tab_active)
+            var params = {
+                params: {
+                    fromCityId: this.cityFrom.CityId,
+                    toCityId: this.cityTo.CityId,
+                    journeyDate: this.form.journeyDate,
+                    busId: item.RouteBusId
+                }
+            }
+            let _self = this
+            this.changeLoading(true)
+            mantisApi.detail(params, response => {
+                _self.changeLoading(false)
+                if(response.success) {
+                    _self.setChartResponse(response.data)
+                }else {
+                    _self.showError()
+                    _self.$modal.hide(MODAL_NAME.bus_modal, params)
+                }
+               
+            }, err => {
+                _self.changeLoading(false)
+                _self.showError()
+                _self.$modal.hide(MODAL_NAME.bus_modal, params)
+               console.log(err)
+            })
+            this.$modal.show(MODAL_NAME.bus_modal, params)
+        },
+
+        getIcons() {
+            
+        },
+
+        
+    }
+}
+</script>
+
+<style>
+
+</style>
